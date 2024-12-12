@@ -12,15 +12,11 @@ This report analyzes the implementation of dynamic load balancing functionality 
 
 **Baseline**
 Please refer to the no imbalance output file. There are hardly any imbalance at current level. 
-Here's a draft section for your report about load balance analysis:
 
-## Analysis of Load Distribution in Molecular Dynamics Simulation
-
-### Initial State and Domain Decomposition
+During the simulation, it was observed that significant load imbalances rarely occurred naturally. This can be attributed to several key physical and computational factors:
 
 The molecular dynamics simulation employs a 1×1×2 spatial domain decomposition, where the simulation box is divided only along the z-direction between two processes. The initial configuration uses a face-centered cubic (FCC) lattice structure, which inherently provides a highly uniform distribution of atoms across the domain. This initial setup ensures that each process begins with approximately equal computational load.
 
-### Natural Load Distribution Characteristics
 
 During the simulation, it was observed that significant load imbalances rarely occurred naturally. The initial configuration uses a structure, which inherently provides a highly uniform distribution of atoms across the domain. This initial setup ensures that each process begins with approximately equal computational load.This can be attributed to several key physical and computational factors:
 
@@ -40,14 +36,12 @@ During the simulation, it was observed that significant load imbalances rarely o
    - Local density fluctuations tend to be temporary and self-correcting
 
 
-### Load Balance Testing Requirements
+Load Balance Testing Requirements
 
 Due to the inherent stability of the atom distribution, artificial imbalance scenarios had to be created to effectively test the load balancing mechanism. The natural dynamics of the system consistently maintained a near-optimal distribution of computational load across processes, with typical imbalance ratios staying well below the triggering threshold of 1.001.
 
-This analysis suggests that for well-equilibrated molecular dynamics simulations using uniform spatial decomposition, load balancing mechanisms may only be crucial in specific scenarios where external factors or particular system configurations create significant imbalances.
 
-
-**Creating manually a imbalance senario.**
+**Mannully Creating a imbalance senario.**
 1. Direct Manipulation of Initial Distribution:
     if (sid == 1) {
         // Process 1 keeps only 40% of its atoms
