@@ -95,9 +95,9 @@ $$
 $$
 
 1. Applying Hilbert Curves
-- The Hilbert curve significantly increase the cache hit rate from **14.54%** to the **43.89%**. This substantial improvement indicates that data reordering effectively enhances spatial locality, allowing the simulation to make better use of the cache hierarchy. Higher cache hit rates reduce the frequency of expensive memory accesses, thereby decreasing latency and improving overall performance.
+- The Hilbert curve significantly increase the cache hit rate from **14.54%** to the **46.91%**. This substantial improvement indicates that data reordering effectively enhances spatial locality, allowing the simulation to make better use of the cache hierarchy. Higher cache hit rates reduce the frequency of expensive memory accesses, thereby decreasing latency and improving overall performance.
 
-- The Hilbert curve optimization resulted in a **43%** reduction in CPU time, demonstrating a significant enhancement in computational efficiency. The slight increase in communication time is minimal and outweighed by the gains in computation speed. This reduction suggests that the optimized memory access patterns allow the processor to execute computations more swiftly by minimizing cache misses and associated delays.
+- The Hilbert curve optimization resulted in a **69.95%** reduction in CPU time, demonstrating a significant enhancement in computational efficiency. The slight increase in communication time is minimal and outweighed by the gains in computation speed. This reduction suggests that the optimized memory access patterns allow the processor to execute computations more swiftly by minimizing cache misses and associated delays.
 
 ## Acknowledgments
 This project is part of the CSCI596 course and focuses on enhancing the efficiency of molecular dynamics simulations through innovative computational methods.
