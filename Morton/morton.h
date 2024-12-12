@@ -30,8 +30,10 @@ EMPTY: Signifies the end of a linked list.
 #define D2P31M 2147483647.0
 #define DMUL 16807.0
 
-#define MAX_MORTON_RANGE 16 /* This value must cover the maximum number of cells in any dimension */
-
+#define MAX_MORTON_RANGE 1024 /* This value must cover the maximum number of cells in any dimension */
+#define MORTON_ORDER 10 // Use 10 bits per dimension for Morton indexing
+#define REORDER_INTERVAL 10
+#define BLOCK_SIZE 128
 /* Variables------------------------------------------------------------
 
 al[0|1|2] = Box length per processor in the x|y|z direction.
@@ -93,8 +95,8 @@ int stepCount;
 double DeltaTH;    /* Half the time step */
 double Uc, Duc;    /* Potential cut-off parameters */
 
-int ***cell_indices; /* Morton indices for cells */
-int particle_indices[NEMAX]; /* Morton indices for particles */
+//int ***cell_indices; /* Morton indices for cells */
+//int particle_indices[NEMAX]; /* Morton indices for particles */
 
 /* Input data-----------------------------------------------------------
 
@@ -139,12 +141,8 @@ void atom_move();
 int bbd(double* ri, int ku);
 int bmv(double* ri, int ku);
 
-void assign_morton_indices();  /* Assign Morton indices to particles */
-void sort_particles_by_morton(); /* Sort particles by Morton indices */
-void free_morton_indices();
-void reorganize_particle_data();
-/* 新增 Morton 相关函数 */
-int compute_morton_index(int x, int y, int z);
-
+unsigned int computeMortonIndex(double x, double y, double z, double boxSize, int maxBits);
+int compareMortonIndex(const void *a, const void *b);
+void reorderAtoms(void);  // 声明
 /*--------------------------------------------------------------------*/
 
