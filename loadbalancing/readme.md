@@ -10,9 +10,45 @@ This report analyzes the implementation of dynamic load balancing functionality 
 - Added new configuration parameters
 - Modified single_step() structure
 
+**Baseline**
+Please refer to the no imbalance output file. There are hardly any imbalance at current level. 
+Here's a draft section for your report about load balance analysis:
+
+## Analysis of Load Distribution in Molecular Dynamics Simulation
+
+### Initial State and Domain Decomposition
+
+The molecular dynamics simulation employs a 1×1×2 spatial domain decomposition, where the simulation box is divided only along the z-direction between two processes. The initial configuration uses a face-centered cubic (FCC) lattice structure, which inherently provides a highly uniform distribution of atoms across the domain. This initial setup ensures that each process begins with approximately equal computational load.
+
+### Natural Load Distribution Characteristics
+
+During the simulation, it was observed that significant load imbalances rarely occurred naturally. The initial configuration uses a structure, which inherently provides a highly uniform distribution of atoms across the domain. This initial setup ensures that each process begins with approximately equal computational load.This can be attributed to several key physical and computational factors:
+
+1. Thermodynamic Equilibrium:
+   - The system maintains a uniform density due to thermodynamic equilibrium
+   - Random thermal motions of atoms tend to preserve the overall spatial distribution
+   - Forces between atoms naturally resist clustering or density fluctuations
+
+2. Periodic Boundary Conditions:
+   - The implementation of periodic boundary conditions prevents systematic drift
+   - When atoms exit one boundary, they enter from the opposite boundary
+   - This mechanism maintains a consistent number of atoms in each domain
+
+3. Inter-Process Atom Movement:
+   - Atoms moving across process boundaries are typically balanced by reciprocal movements
+   - The Lennard-Jones potential maintains relatively uniform density distributions
+   - Local density fluctuations tend to be temporary and self-correcting
+
+
+### Load Balance Testing Requirements
+
+Due to the inherent stability of the atom distribution, artificial imbalance scenarios had to be created to effectively test the load balancing mechanism. The natural dynamics of the system consistently maintained a near-optimal distribution of computational load across processes, with typical imbalance ratios staying well below the triggering threshold of 1.001.
+
+This analysis suggests that for well-equilibrated molecular dynamics simulations using uniform spatial decomposition, load balancing mechanisms may only be crucial in specific scenarios where external factors or particular system configurations create significant imbalances.
+
 
 **Creating manually a imbalance senario.**
-
+1. Direct Manipulation of Initial Distribution:
     if (sid == 1) {
         // Process 1 keeps only 40% of its atoms
         n = (int)(n * 0.4);
@@ -28,7 +64,12 @@ This report analyzes the implementation of dynamic load balancing functionality 
         printf("Process 0: Increased to %d atoms\n", n);
     }
 
-    
+2. System Parameters:
+3. 
+Reduced the overall system size to make imbalances more noticeable
+Modified the input file (pmdotoc.in) to use smaller InitUcell values
+Adjusted load_imbalance_threshold to ensure the load balancing mechanism would trigger
+
 **Modified Single Step**
 
 
