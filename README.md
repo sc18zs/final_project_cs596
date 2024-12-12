@@ -79,15 +79,24 @@ Proposed method attempts to maintain an even distribution of atoms across proces
 ## Expected Results
 1. Higher Cache Hit Rates: Reordering particle data based on Hilbert/Morton curves will improve memory locality, leading to significantly reduced cache misses.
 
-- The Hilbert curve significantly increase the cache hit rate from 14.54% to the 43.89%. This substantial improvement indicates that data reordering effectively enhances spatial locality, allowing the simulation to make better use of the cache hierarchy. Higher cache hit rates reduce the frequency of expensive memory accesses, thereby decreasing latency and improving overall performance.
-
 2. Reduced Execution Time: Enhanced memory access patterns will optimize the performance of critical sections like compute_accel, resulting in faster force calculations.
-
-- The Hilbert curve optimization resulted in a 43% reduction in CPU time, demonstrating a significant enhancement in computational efficiency. The slight increase in communication time is minimal and outweighed by the gains in computation speed. This reduction suggests that the optimized memory access patterns allow the processor to execute computations more swiftly by minimizing cache misses and associated delays.
 
 3. Improved Scalability: The balance load function periodically checks for these imbalances and redistributes the atoms (or domain) to ensure that each process is responsible for approximately the same number of atoms. This reduces idle time and improves the efficiency of the overall simulation.
 
 4. Reduced Simulation Time: Load balancing can adapt dynamically and can optimize resource utilization, leading to a reduced running time.
+
+## Experiment
+**Optimization Plan Using Hilbert and Morton Curves**
+In our code, the variable cache_accesses keeps track of the total number of cache accesses, while cache_hits tracks how many times data is successfully retrieved from the cache. The cache hit rate can then be calculated by dividing cache_hits by cache_accesses and multiplying by 100 to get the percentage:
+
+\[
+\text{Cache Hit Rate} = \frac{\text{Cache Hits}}{\text{Cache Accesses}} \times 100\%
+\]
+
+1. Applying Hilbert Curves
+- The Hilbert curve significantly increase the cache hit rate from 14.54% to the 43.89%. This substantial improvement indicates that data reordering effectively enhances spatial locality, allowing the simulation to make better use of the cache hierarchy. Higher cache hit rates reduce the frequency of expensive memory accesses, thereby decreasing latency and improving overall performance.
+
+- The Hilbert curve optimization resulted in a 43% reduction in CPU time, demonstrating a significant enhancement in computational efficiency. The slight increase in communication time is minimal and outweighed by the gains in computation speed. This reduction suggests that the optimized memory access patterns allow the processor to execute computations more swiftly by minimizing cache misses and associated delays.
 
 ## Acknowledgments
 This project is part of the CSCI596 course and focuses on enhancing the efficiency of molecular dynamics simulations through innovative computational methods.
