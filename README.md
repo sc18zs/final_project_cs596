@@ -90,17 +90,17 @@ Proposed method attempts to maintain an even distribution of atoms across proces
 
 In our code, the variable cache_accesses keeps track of the total number of cache accesses, while cache_hits tracks how many times data is successfully retrieved from the cache. The cache hit rate can then be calculated by dividing cache_hits by cache_accesses and multiplying by 100 to get the percentage:
 
-| Metric             | Before Using Hilbert Curve | After Using Hilbert Curve |
-|--------------------|---------------------------|--------------------------|
-| **CPU**            | 5.150883                  | 1.547965                 |
-| **COMT**           | 0.02530489                | 0.05067728               |
-| **CATCH HIT RATE** | 14.54%                    | 46.91%                   |
-
 $$
 \text{Cache Hit Rate} = \frac{\text{Cache Hits}}{\text{Cache Accesses}} \times 100\%
 $$
 
 1. Applying Hilbert Curves
+
+| Metric             | Before Using Hilbert Curve | After Using Hilbert Curve |
+|--------------------|---------------------------|----------------------------|
+| **CPU**            | 5.150883                  | 1.547965                   |
+| **COMT**           | 0.02530489                | 0.05067728                 |
+| **CATCH HIT RATE** | 14.54%                    | 46.91%                     |
 
 <img src="https://github.com/sc18zs/final_project_cs596/blob/main/Hilbert/Result_comparision.png" alt="Comparison of CPU, COMT, and Cache Hit Rate" width="600"/>
 
