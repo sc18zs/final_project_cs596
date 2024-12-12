@@ -207,15 +207,25 @@ Due to the inherent stability of the atom distribution, artificial imbalance sce
 **Modified Single Step**
 We modified single step to handle load balancing in the correct order and without redundant operations. 
 
+
 **Load Balancing Function**
 
 Key Features of the Load Balancing:
-    
+   1. Measures Load Distribution: The function assesses the computational load on each process. This load is often quantified using metrics like the number of atoms or particles each process handles, the time spent in computation, or even hardware-level metrics like CPU or memory usage.
+   2. Identifies Imbalances: Compares the measured load against an ideal or average workload. Determines which processes are overloaded or underloaded.
+   3. Redistributes Work: Transfers workload (e.g., particles or atoms in a molecular dynamics simulation) from overloaded processes to underloaded ones. Updates data structures, such as neighbor lists or communication buffers, to reflect the new distribution.
+   4. Adjusts Communication Patterns: Modifies the topology of communication (e.g., neighboring relationships between processes) to account for the new workload distribution. Synchronizes the state of the simulation across all processes to prevent data corruption or inconsistencies.
+
     Periodic checks: Runs every load_balance_interval steps
+    
     Threshold-based: Only triggers if imbalance exceeds threshold
+    
     Boundary-aware: Transfers atoms near process boundaries
+    
     Limited transfers: Maximum 10 atoms per step to avoid instability is used in the output in the folder. Large values lead to instability and crash.
+    
     Neighbor-only: Transfers only between adjacent processes
+    
     Preserves physics: Maintains periodic boundary conditions during transfers
      
          === Load Balance Check at Step 100 ===
@@ -277,6 +287,12 @@ Key Changes:
         Added energy validation
         Added error handling for unreasonable energy values
         
+**Challenges**
+   Overhead: Measuring workload, redistributing tasks, and synchronizing processes introduce overhead. A poorly designed load-balancing algorithm can negate its benefits.
+   Data Migration Costs: Moving atoms or particles between processes involves communication overhead, which can be expensive in distributed-memory systems.
+   Complexity: Implementing efficient and robust dynamic load balancing algorithms is non-trivial, especially for irregular or rapidly changing workloads.
+   Data Consistency: Ensuring that migrated data does not disrupt the simulation's consistency is critical.
+
 
 
 
