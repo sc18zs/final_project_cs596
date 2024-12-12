@@ -96,7 +96,7 @@ $$
 
 1. Applying Hilbert Curves
 
-<img src="https://github.com/sc18zs/final_project_cs596/blob/main/Hilbert/Result_comparision.png" alt="Comparison of CPU, COMT, and Cache Hit Rate" width="400"/>
+<img src="https://github.com/sc18zs/final_project_cs596/blob/main/Hilbert/Result_comparision.png" alt="Comparison of CPU, COMT, and Cache Hit Rate" width="700"/>
 
 - The Hilbert curve significantly increase the cache hit rate from **14.54%** to the **46.91%**. This substantial improvement indicates that data reordering effectively enhances spatial locality, allowing the simulation to make better use of the cache hierarchy. Higher cache hit rates reduce the frequency of expensive memory accesses, thereby decreasing latency and improving overall performance.
 
