@@ -103,6 +103,7 @@ $$
 - The Hilbert curve optimization resulted in a **69.95%** reduction in CPU time, demonstrating a significant enhancement in computational efficiency. The slight increase in communication time is minimal and outweighed by the gains in computation speed. This reduction suggests that the optimized memory access patterns allow the processor to execute computations more swiftly by minimizing cache misses and associated delays.
 
 2. Applying Morton Curves
+
 | Metric             | Before Using Morton Curve | After Using Morton Curve |
 |--------------------|---------------------------|--------------------------|
 | **CPU**            | 0.3005791                 | 0.1117183                |
