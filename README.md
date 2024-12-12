@@ -118,5 +118,7 @@ $$
 
 <img src="https://github.com/sc18zs/final_project_cs596/blob/main/Morton/Comparison.png" alt="Comparison of CPU, COMT, and Cache Hit Rate" width="600"/>
 
+After using the Morton Curve, the program's performance showed significant improvement. Specifically, the CPU time decreased by approximately **62.8%**, indicating a substantial increase in computational efficiency and a noticeable speedup of the program. Although COMT time increased by **3.25%**, this change is minimal compared to the reduction in CPU time and can be considered negligible. More importantly, the CATCH HIT RATE increased from **15.15%** to **47.87%**, significantly improving the cache hit rate and reducing memory access failures, further enhancing the program's execution efficiency. Overall, the use of the Morton Curve optimization led to notable improvements in both memory access efficiency and computational performance.
+
 ## Acknowledgments
 This project is part of the CSCI596 course and focuses on enhancing the efficiency of molecular dynamics simulations through innovative computational methods.
