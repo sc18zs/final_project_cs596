@@ -86,7 +86,7 @@ Proposed method attempts to maintain an even distribution of atoms across proces
 4. Reduced Simulation Time: Load balancing can adapt dynamically and can optimize resource utilization, leading to a reduced running time.
 
 ## Experiment
-**Optimization Plan Using Hilbert and Morton Curves**
+### Optimization Plan Using Hilbert and Morton Curves
 
 In our code, the variable cache_accesses keeps track of the total number of cache accesses, while cache_hits tracks how many times data is successfully retrieved from the cache. The cache hit rate can then be calculated by dividing cache_hits by cache_accesses and multiplying by 100 to get the percentage:
 
@@ -120,7 +120,7 @@ $$
 
 After using the Morton Curve, the program's performance showed significant improvement. Specifically, the CPU time decreased by approximately **62.8%**, indicating a substantial increase in computational efficiency and a noticeable speedup of the program. Although COMT time increased by **3.25%**, this change is minimal compared to the reduction in CPU time and can be considered negligible. More importantly, the CATCH HIT RATE increased from **15.15%** to **47.87%**, significantly improving the cache hit rate and reducing memory access failures, further enhancing the program's execution efficiency. Overall, the use of the Morton Curve optimization led to notable improvements in both memory access efficiency and computational performance.
 
-## Applying Load Balancing
+### Applying Load Balancing
 
 **Overview**
 
