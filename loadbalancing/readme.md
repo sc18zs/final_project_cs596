@@ -60,13 +60,12 @@ Due to the inherent stability of the atom distribution, artificial imbalance sce
     }
 
 2. System Parameters:
-3. 
-Reduced the overall system size to make imbalances more noticeable
-Modified the input file (pmdotoc.in) to use smaller InitUcell values
-Adjusted load_imbalance_threshold to ensure the load balancing mechanism would trigger
+3. Reduced the overall system size to make imbalances more noticeable
+   Modified the input file (pmdotoc.in) to use smaller InitUcell values
+   Adjusted load_imbalance_threshold to ensure the load balancing mechanism would trigger
 
 **Modified Single Step**
-
+We modified single step to handle load balancing in the correct order and without redundant operations. 
 
 **Load Balancing Function**
 
@@ -80,8 +79,7 @@ Key Features of the Load Balancing:
     Preserves physics: Maintains periodic boundary conditions during transfers
 
 
-    
-
+   
 
 **=== Load Balance Check at Step 100 ===**
 Initial atom distribution:
