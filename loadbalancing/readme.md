@@ -16,6 +16,22 @@ Please refer to the no imbalance output file. There are hardly any imbalance at 
 
 During the simulation, it was observed that significant load imbalances rarely occurred naturally. This can be attributed to several key physical and computational factors:
 
+=== Load Balance Check at Step 50 ===
+Initial atom distribution:
+Process 0: 18473 atoms
+Process 1: 18402 atoms
+Process 2: 18431 atoms
+Process 3: 18470 atoms
+Process 4: 18447 atoms
+Process 5: 18384 atoms
+Process 6: 18386 atoms
+Process 7: 18463 atoms
+Load imbalance metrics:
+Max atoms: 18473, Min atoms: 18384
+Current imbalance ratio: 1.004841
+No load balancing needed at this step.
+
+
 The molecular dynamics simulation employs a 1×1×2 spatial domain decomposition, where the simulation box is divided only along the z-direction between two processes. The initial configuration uses a face-centered cubic (FCC) lattice structure, which inherently provides a highly uniform distribution of atoms across the domain. This initial setup ensures that each process begins with approximately equal computational load.
 
 
@@ -82,6 +98,7 @@ Key Features of the Load Balancing:
    
 
 **=== Load Balance Check at Step 100 ===**
+loading balancing triggered
 Initial atom distribution:
 Process 0: 11985 atoms
 Process 1: 10705 atoms
