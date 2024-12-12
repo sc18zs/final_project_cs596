@@ -155,7 +155,7 @@ During the simulation, it was observed that significant load imbalances rarely o
 
 This can be attributed to several key physical and computational factors:
    
-   - The molecular dynamics simulation employs a 1×1×2 spatial domain decomposition, where the simulation box is divided only along the z-direction between two processes. The initial configuration uses a face-centered cubic (FCC) lattice structure, which inherently provides a highly uniform distribution of atoms across the domain. This initial setup ensures that each process begins with approximately equal computational load.
+   - The molecular dynamics simulation employs a spatial domain decomposition, where the simulation box is divided only along the x,y,z-direction between two/or more processes. The initial configuration uses a face-centered cubic (FCC) lattice structure, which inherently provides a highly uniform distribution of atoms across the domain. This initial setup ensures that each process begins with approximately equal computational load.
    
    
    - During the simulation, it was observed that significant load imbalances rarely occurred naturally. The initial configuration uses a structure, which inherently provides a highly uniform distribution of atoms across the domain. This initial setup ensures that each process begins with approximately equal computational load.
