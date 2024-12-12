@@ -184,20 +184,21 @@ Due to the inherent stability of the atom distribution, artificial imbalance sce
 **Mannully Creating a imbalance senario.**
 
 1. Direct Manipulation of Initial Distribution:
-    if (sid == 1) {
-        // Process 1 keeps only 40% of its atoms
-        n = (int)(n * 0.4);
-        printf("Process 1: Reduced to %d atoms\n", n);
-    } else if (sid == 0) {
-        // Process 0 keeps its atoms plus copies some
-        for (j = 0; j < original_n * 0.6; j++) {  // Add 60% more
-            for (a = 0; a < 3; a++) {
-                r[n][a] = r[j][a];  // Copy positions from existing atoms
-            }
-            n++;
-        }
-        printf("Process 0: Increased to %d atoms\n", n);
-    }
+   
+       if (sid == 1) {
+           // Process 1 keeps only 40% of its atoms
+           n = (int)(n * 0.4);
+           printf("Process 1: Reduced to %d atoms\n", n);
+       } else if (sid == 0) {
+           // Process 0 keeps its atoms plus copies some
+           for (j = 0; j < original_n * 0.6; j++) {  // Add 60% more
+               for (a = 0; a < 3; a++) {
+                   r[n][a] = r[j][a];  // Copy positions from existing atoms
+               }
+               n++;
+           }
+           printf("Process 0: Increased to %d atoms\n", n);
+       }
 
 2. System Parameters:
       Reduced the overall system size to make imbalances more noticeable
@@ -288,9 +289,13 @@ Key Changes:
         Added error handling for unreasonable energy values
         
 **Challenges**
+
    Overhead: Measuring workload, redistributing tasks, and synchronizing processes introduce overhead. A poorly designed load-balancing algorithm can negate its benefits.
+   
    Data Migration Costs: Moving atoms or particles between processes involves communication overhead, which can be expensive in distributed-memory systems.
+   
    Complexity: Implementing efficient and robust dynamic load balancing algorithms is non-trivial, especially for irregular or rapidly changing workloads.
+   
    Data Consistency: Ensuring that migrated data does not disrupt the simulation's consistency is critical.
 
 
