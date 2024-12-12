@@ -11,6 +11,7 @@ This report analyzes the implementation of dynamic load balancing functionality 
 - Modified single_step() structure
 
 **Baseline**
+
 Please refer to the no imbalance output file. There are hardly any imbalance at current level. 
 
 During the simulation, it was observed that significant load imbalances rarely occurred naturally. This can be attributed to several key physical and computational factors:
