@@ -90,13 +90,19 @@ Proposed method attempts to maintain an even distribution of atoms across proces
 
 In our code, the variable cache_accesses keeps track of the total number of cache accesses, while cache_hits tracks how many times data is successfully retrieved from the cache. The cache hit rate can then be calculated by dividing cache_hits by cache_accesses and multiplying by 100 to get the percentage:
 
+| Metric             | Before Using Hilbert Curve | After Using Hilbert Curve |
+|--------------------|---------------------------|--------------------------|
+| **CPU**            | 5.150883                  | 1.547965                 |
+| **COMT**           | 0.02530489                | 0.05067728               |
+| **CATCH HIT RATE** | 14.54%                    | 46.91%                   |
+
 $$
 \text{Cache Hit Rate} = \frac{\text{Cache Hits}}{\text{Cache Accesses}} \times 100\%
 $$
 
 1. Applying Hilbert Curves
 
-<img src="https://github.com/sc18zs/final_project_cs596/blob/main/Hilbert/Result_comparision.png" alt="Comparison of CPU, COMT, and Cache Hit Rate" width="700"/>
+<img src="https://github.com/sc18zs/final_project_cs596/blob/main/Hilbert/Result_comparision.png" alt="Comparison of CPU, COMT, and Cache Hit Rate" width="600"/>
 
 - The Hilbert curve significantly increase the cache hit rate from **14.54%** to the **46.91%**. This substantial improvement indicates that data reordering effectively enhances spatial locality, allowing the simulation to make better use of the cache hierarchy. Higher cache hit rates reduce the frequency of expensive memory accesses, thereby decreasing latency and improving overall performance.
 
@@ -109,6 +115,8 @@ $$
 | **CPU**            | 0.3005791                 | 0.1117183                |
 | **COMT**           | 0.01215395                | 0.01254960               |
 | **CATCH HIT RATE** | 15.15%                    | 47.87%                   |
+
+<img src="https://github.com/sc18zs/final_project_cs596/blob/main/Morton/Comparison.png" alt="Comparison of CPU, COMT, and Cache Hit Rate" width="600"/>
 
 ## Acknowledgments
 This project is part of the CSCI596 course and focuses on enhancing the efficiency of molecular dynamics simulations through innovative computational methods.
