@@ -25,6 +25,10 @@ EMPTY: Signifies the end of a linked list.
 #define RCUT 2.5
 #define MOVED_OUT -1.0e10
 #define EMPTY -1
+#define HILBERT_ORDER 10    /* Order of the Hilbert curve */
+#define REORDER_INTERVAL 10 /* Interval for reordering atoms */
+#define BLOCK_SIZE 128  // 定义分块大小
+#define MAX_HILBERT_RANGE 30  // 最大Hilbert索引范围
 /* Constants for the random number generator */
 #define D2P31M 2147483647.0
 #define DMUL 16807.0
@@ -130,6 +134,9 @@ void atom_copy();
 void compute_accel();
 void eval_props();
 void atom_move();
+void reorderAtoms();
+unsigned int computeHilbertIndex(double x, double y, double z, double boxSize, int order);
+int compareHilbertIndex(const void* a, const void* b);
 int bbd(double* ri, int ku);
 int bmv(double* ri, int ku);
 /*--------------------------------------------------------------------*/

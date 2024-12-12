@@ -1,8 +1,22 @@
 /*----------------------------------------------------------------------
-Program pmd.c performs parallel molecular-dynamics for Lennard-Jones 
+Program pmd.c performs parallel molecular-dynamics for Lennard-Jones
 systems using the Message Passing Interface (MPI) standard.
 ----------------------------------------------------------------------*/
 #include "pmd.h"
+#include <math.h>
+#include <stdlib.h>
+
+/* Global variables for cache hit tracking */
+int cache_hits = 0;  // Count of cache hits
+int cache_accesses = 0;  // Total cache accesses
+
+/* Atom structure definition */
+struct Atom {
+    double r[3]; // Position
+    double rv[3]; // Velocity
+    double ra[3]; // Acceleration
+    unsigned int hilbertIndex; // Hilbert index for sorting
+};
 
 /*--------------------------------------------------------------------*/
 int main(int argc, char **argv) {
@@ -17,21 +31,105 @@ int main(int argc, char **argv) {
   vid[2] = sid%vproc[2];
 
   init_params();
-  set_topology(); 
+  set_topology();
   init_conf();
   atom_copy();
-  compute_accel(); /* Computes initial accelerations */ 
+  compute_accel(); /* Computes initial accelerations */
 
   cpu1 = MPI_Wtime();
   for (stepCount=1; stepCount<=StepLimit; stepCount++) {
-    single_step(); 
+    single_step();
+    if (stepCount%REORDER_INTERVAL == 0) reorderAtoms();
     if (stepCount%StepAvg == 0) eval_props();
   }
   cpu = MPI_Wtime() - cpu1;
-  if (sid == 0) printf("CPU & COMT = %le %le\n",cpu,comt);
+  
+  /* Output */
+  if (sid == 0) {
+    printf("CPU & COMT = %le %le\n",cpu,comt);
+    double hit_rate = (cache_accesses > 0) ? (double)cache_hits / cache_accesses : 0.0;
+    printf("Cache hit rate: %.2f%%\n", hit_rate * 100.0);
+  }
 
   MPI_Finalize(); /* Clean up the MPI environment */
   return 0;
+}
+
+/*--------------------------------------------------------------------*/
+unsigned int computeHilbertIndex(double x, double y, double z, double boxSize, int order) {
+/*----------------------------------------------------------------------
+Compute the Hilbert curve index for a 3D position.
+----------------------------------------------------------------------*/
+  unsigned int index = 0;
+  unsigned int mask = 1 << (order - 1);
+
+  unsigned int ix = (unsigned int)(x / boxSize * mask);
+  unsigned int iy = (unsigned int)(y / boxSize * mask);
+  unsigned int iz = (unsigned int)(z / boxSize * mask);
+
+  for (unsigned int level = 0; level < order; ++level) {
+    unsigned int hx = (ix >> (order - 1 - level)) & 1;
+    unsigned int hy = (iy >> (order - 1 - level)) & 1;
+    unsigned int hz = (iz >> (order - 1 - level)) & 1;
+
+    index = (index << 3) | (hx << 2) | (hy << 1) | hz;
+  }
+
+  return index;
+}
+
+/*--------------------------------------------------------------------*/
+int calculateHilbertIndex(int x, int y, int z, int numBits) {
+/*----------------------------------------------------------------------
+ Calculate the Hilbert curve index for a 3D position using integer coordinates.
+----------------------------------------------------------------------*/
+    int hilbertIndex = 0;
+    for (int i = numBits - 1; i >= 0; --i) {
+        int mask = 1 << i;
+        int xi = (x & mask) ? 1 : 0;
+        int yi = (y & mask) ? 1 : 0;
+        int zi = (z & mask) ? 1 : 0;
+        hilbertIndex = (hilbertIndex << 3) | ((xi << 2) | (yi << 1) | zi);
+    }
+    return hilbertIndex;
+}
+
+/*--------------------------------------------------------------------*/
+int compareHilbertIndex(const void* a, const void* b) {
+/*----------------------------------------------------------------------
+Compare the Hilbert curve index.
+----------------------------------------------------------------------*/
+  return (*(int*)a) - (*(int*)b);
+}
+
+/*--------------------------------------------------------------------*/
+void reorderAtoms() {
+/*----------------------------------------------------------------------
+Reorder atoms based on their Hilbert curve index.
+----------------------------------------------------------------------*/
+  struct Atom *atoms = malloc(n * sizeof(struct Atom));
+  // Calculate the Hilbert index of each particle and retain particle speed and position
+  for (int i = 0; i < n; i++) {
+    atoms[i].hilbertIndex = computeHilbertIndex(r[i][0], r[i][1], r[i][2], al[0], HILBERT_ORDER);
+    for (int a = 0; a < 3; a++) {
+      atoms[i].r[a] = r[i][a];
+      atoms[i].rv[a] = rv[i][a];
+      atoms[i].ra[a] = ra[i][a];
+    }
+  }
+
+  // Sort atoms by Hilbert index
+  qsort(atoms, n, sizeof(struct Atom), compareHilbertIndex);
+
+  // Update the main arrays
+  for (int i = 0; i < n; i++) {
+    for (int a = 0; a < 3; a++) {
+      r[i][a] = atoms[i].r[a];
+      rv[i][a] = atoms[i].rv[a];
+      ra[i][a] = atoms[i].ra[a];
+    }
+  }
+  free(atoms);
 }
 
 /*--------------------------------------------------------------------*/
@@ -60,7 +158,7 @@ Initializes parameters.
 
   /* Compute the # of cells for linked cell lists */
   for (a=0; a<3; a++) {
-    lc[a] = al[a]/RCUT; 
+    lc[a] = al[a]/RCUT;
     rc[a] = al[a]/lc[a];
   }
   if (sid == 0) {
@@ -77,8 +175,8 @@ Initializes parameters.
 /*--------------------------------------------------------------------*/
 void set_topology() {
 /*----------------------------------------------------------------------
-Defines a logical network topology.  Prepares a neighbor-node ID table, 
-nn, & a shift-vector table, sv, for internode message passing.  Also 
+Defines a logical network topology.  Prepares a neighbor-node ID table,
+nn, & a shift-vector table, sv, for internode message passing.  Also
 prepares the node parity table, myparity.
 ----------------------------------------------------------------------*/
   /* Integer vectors to specify the six neighbor nodes */
@@ -100,7 +198,7 @@ prepares the node parity table, myparity.
 
   /* Set up the node parity table, myparity */
   for (a=0; a<3; a++) {
-    if (vproc[a] == 1) 
+    if (vproc[a] == 1)
       myparity[a] = 2;
     else if (vid[a]%2 == 0)
       myparity[a] = 0;
@@ -112,15 +210,15 @@ prepares the node parity table, myparity.
 /*--------------------------------------------------------------------*/
 void init_conf() {
 /*----------------------------------------------------------------------
-r are initialized to face-centered cubic (fcc) lattice positions.  
-rv are initialized with a random velocity corresponding to Temperature.  
+r are initialized to face-centered cubic (fcc) lattice positions.
+rv are initialized with a random velocity corresponding to Temperature.
 ----------------------------------------------------------------------*/
   double c[3],gap[3],e[3],vSum[3],gvSum[3],vMag;
   int j,a,nX,nY,nZ;
   double seed;
   /* FCC atoms in the original unit cell */
   double origAtom[4][3] = {{0.0, 0.0, 0.0}, {0.0, 0.5, 0.5},
-                           {0.5, 0.0, 0.5}, {0.5, 0.5, 0.0}}; 
+                           {0.5, 0.0, 0.5}, {0.5, 0.5, 0.0}};
 
   /* Set up a face-centered cubic (fcc) lattice */
   for (a=0; a<3; a++) gap[a] = al[a]/InitUcell[a];
@@ -191,7 +289,7 @@ Accelerates atomic velocities, rv, by half the time step.
 /*--------------------------------------------------------------------*/
 void atom_copy() {
 /*----------------------------------------------------------------------
-Exchanges boundary-atom coordinates among neighbor nodes:  Makes 
+Exchanges boundary-atom coordinates among neighbor nodes:  Makes
 boundary-atom list, LSB, then sends & receives boundary atoms.
 ----------------------------------------------------------------------*/
   int kd,kdd,i,ku,inode,nsd,nrc,a;
@@ -207,11 +305,11 @@ boundary-atom list, LSB, then sends & receives boundary atoms.
     /* Reset the # of to-be-copied atoms for lower&higher directions */
     for (kdd=0; kdd<2; kdd++) lsb[2*kd+kdd][0] = 0;
 
-    /* Scan all the residents & copies to identify boundary atoms */ 
+    /* Scan all the residents & copies to identify boundary atoms */
     for (i=0; i<n+nbnew; i++) {
       for (kdd=0; kdd<2; kdd++) {
         ku = 2*kd+kdd; /* Neighbor ID */
-        /* Add an atom to the boundary-atom list, LSB, for neighbor ku 
+        /* Add an atom to the boundary-atom list, LSB, for neighbor ku
            according to bit-condition function, bbd */
         if (bbd(r[i],ku)) lsb[ku][++(lsb[ku][0])] = i;
       }
@@ -252,7 +350,7 @@ boundary-atom list, LSB, then sends & receives boundary atoms.
       /* Message buffering */
       for (i=1; i<=nsd; i++)
         for (a=0; a<3; a++) /* Shift the coordinate origin */
-          dbuf[3*(i-1)+a] = r[lsb[ku][i]][a]-sv[ku][a]; 
+          dbuf[3*(i-1)+a] = r[lsb[ku][i]][a]-sv[ku][a];
 
       /* Even node: send & recv */
       if (myparity[kd] == 0) {
@@ -272,7 +370,7 @@ boundary-atom list, LSB, then sends & receives boundary atoms.
 
       /* Message storing */
       for (i=0; i<nrc; i++)
-        for (a=0; a<3; a++) r[n+nbnew+i][a] = dbufr[3*i+a]; 
+        for (a=0; a<3; a++) r[n+nbnew+i][a] = dbufr[3*i+a];
 
       /* Increment the # of received boundary atoms */
       nbnew = nbnew+nrc;
@@ -293,115 +391,113 @@ boundary-atom list, LSB, then sends & receives boundary atoms.
 }
 
 /*--------------------------------------------------------------------*/
+/**
+ * Compute the acceleration for each particle based on pairwise interactions.
+ * This function uses the cut-off distance to limit interactions, and
+ * calculates the forces and potential energy for each particle pair.
+ */
 void compute_accel() {
 /*----------------------------------------------------------------------
-Given atomic coordinates, r[0:n+nb-1][], for the extended (i.e., 
-resident & copied) system, computes the acceleration, ra[0:n-1][], for 
-the residents.
+    This function calculates the acceleration (force) for each particle
+    based on the pairwise interactions between particles. It uses a cut-off
+    distance to limit interactions, computes the pairwise potential energy
+    and force, and updates the particle's acceleration.
 ----------------------------------------------------------------------*/
-  int i,j,a,lc2[3],lcyz2,lcxyz2,mc[3],c,mc1[3],c1;
-  int bintra;
-  double dr[3],rr,ri2,ri6,r1,rrCut,fcVal,f,vVal,lpe;
+    int i, j, a;
+    double dr[3], rr, ri2, ri6, r1, rrCut, fcVal, f, vVal, lpe;
 
-  /* Reset the potential & forces */
-  lpe = 0.0;
-  for (i=0; i<n; i++) for (a=0; a<3; a++) ra[i][a] = 0.0;
+    /* Reset the potential energy and forces */
+    lpe = 0.0;
+    for (i = 0; i < n; i++) {
+        for (a = 0; a < 3; a++) {
+            ra[i][a] = 0.0;
+        }
+    }
 
-  /* Make a linked-cell list, lscl------------------------------------*/
+    /* Cut-off distance squared */
+    rrCut = RCUT * RCUT;
 
-  for (a=0; a<3; a++) lc2[a] = lc[a]+2;
-  lcyz2 = lc2[1]*lc2[2];
-  lcxyz2 = lc2[0]*lcyz2;
+    /* Convert particle data to SoA format */
+    double *x = (double *)malloc(nglob * sizeof(double));
+    double *y = (double *)malloc(nglob * sizeof(double));
+    double *z = (double *)malloc(nglob * sizeof(double));
+    for (i = 0; i < nglob; i++) {
+        x[i] = r[i][0];
+        y[i] = r[i][1];
+        z[i] = r[i][2];
+    }
 
-  /* Reset the headers, head */
-  for (c=0; c<lcxyz2; c++) head[c] = EMPTY;
+    /* Sort particles by Hilbert index */
+    int *particleIndices = (int *)malloc((n + nb) * sizeof(int));
+    for (i = 0; i < n + nb; i++) {
+        int mc[3];
+        for (a = 0; a < 3; a++) {
+            mc[a] = (int)((r[i][a] + rc[a]) / rc[a]);
+        }
+        particleIndices[i] = calculateHilbertIndex(mc[0], mc[1], mc[2], 10);
+    }
+    qsort(particleIndices, n + nb, sizeof(int), compareHilbertIndex);
+  
+  
+    /* Compute pair interactions */
+    #pragma omp parallel for private(i, j, dr, rr, ri2, ri6, r1, fcVal, vVal)
+    for (int blockStart = 0; blockStart < n; blockStart += BLOCK_SIZE) {
+        int blockEnd = fmin(blockStart + BLOCK_SIZE, n);
 
-  /* Scan atoms to construct headers, head, & linked lists, lscl */
+        for (int ia = blockStart; ia < blockEnd; ia++) {
+            i = particleIndices[ia];
 
-  for (i=0; i<n+nb; i++) {
-    for (a=0; a<3; a++) mc[a] = (r[i][a]+rc[a])/rc[a];
+            for (int jb = ia + 1; jb < blockEnd; jb++) {
+                j = particleIndices[jb];
 
-    /* Translate the vector cell index, mc, to a scalar cell index */
-    c = mc[0]*lcyz2+mc[1]*lc2[2]+mc[2];
+                if (particleIndices[j] - particleIndices[i] > MAX_HILBERT_RANGE) break;
 
-    /* Link to the previous occupant (or EMPTY if you're the 1st) */
-    lscl[i] = head[c];
+                /* Quick rejection based on distance */
+                if (fabs(x[i] - x[j]) > RCUT) continue;
+                if (fabs(y[i] - y[j]) > RCUT) continue;
+                if (fabs(z[i] - z[j]) > RCUT) continue;
 
-    /* The last one goes to the header */
-    head[c] = i;
-  } /* Endfor atom i */
+                /* Cache access statistics */
+                cache_accesses++;
 
-  /* Calculate pair interaction---------------------------------------*/
-
-  rrCut = RCUT*RCUT;
-
-  /* Scan inner cells */
-  for (mc[0]=1; mc[0]<=lc[0]; (mc[0])++)
-  for (mc[1]=1; mc[1]<=lc[1]; (mc[1])++)
-  for (mc[2]=1; mc[2]<=lc[2]; (mc[2])++) {
-
-    /* Calculate a scalar cell index */
-    c = mc[0]*lcyz2+mc[1]*lc2[2]+mc[2];
-    /* Skip this cell if empty */
-    if (head[c] == EMPTY) continue;
-
-    /* Scan the neighbor cells (including itself) of cell c */
-    for (mc1[0]=mc[0]-1; mc1[0]<=mc[0]+1; (mc1[0])++)
-    for (mc1[1]=mc[1]-1; mc1[1]<=mc[1]+1; (mc1[1])++)
-    for (mc1[2]=mc[2]-1; mc1[2]<=mc[2]+1; (mc1[2])++) {
-
-      /* Calculate the scalar cell index of the neighbor cell */
-      c1 = mc1[0]*lcyz2+mc1[1]*lc2[2]+mc1[2];
-      /* Skip this neighbor cell if empty */
-      if (head[c1] == EMPTY) continue;
-
-      /* Scan atom i in cell c */
-      i = head[c];
-      while (i != EMPTY) {
-
-        /* Scan atom j in cell c1 */
-        j = head[c1];
-        while (j != EMPTY) {
-
-          /* No calculation with itself */
-          if (j != i) {
-            /* Logical flag: intra(true)- or inter(false)-pair atom */
-            bintra = (j < n);
-
-            /* Pair vector dr = r[i] - r[j] */
-            for (rr=0.0, a=0; a<3; a++) {
-              dr[a] = r[i][a]-r[j][a];
-              rr += dr[a]*dr[a];
-            }
-
-            /* Calculate potential & forces for intranode pairs (i < j)
-               & all the internode pairs if rij < RCUT; note that for
-               any copied atom, i < j */
-            if (i<j && rr<rrCut) {
-              ri2 = 1.0/rr; ri6 = ri2*ri2*ri2; r1 = sqrt(rr);
-              fcVal = 48.0*ri2*ri6*(ri6-0.5) + Duc/r1;
-              vVal = 4.0*ri6*(ri6-1.0) - Uc - Duc*(r1-RCUT);
-              if (bintra) lpe += vVal; else lpe += 0.5*vVal;
-              for (a=0; a<3; a++) {
-                f = fcVal*dr[a];
-                ra[i][a] += f;
-                if (bintra) ra[j][a] -= f;
-              }
-            }
-          } /* Endif not self */
+                /* Calculate pairwise distance */
+                for (rr = 0.0, a = 0; a < 3; a++) {
+                    dr[a] = r[i][a] - r[j][a];
+                    rr += dr[a] * dr[a];
+                }
           
-          j = lscl[j];
-        } /* Endwhile j not empty */
+                /* Check for invalid distances */
+                if (rr <= 1e-12 || isnan(rr) || rr > rrCut) continue;
+              
+                /* Apply cut-off */
+                cache_hits++;
+                ri2 = 1.0 / rr;
+                if (isinf(ri2) || isnan(ri2)) continue;
 
-        i = lscl[i];
-      } /* Endwhile i not empty */
+                ri6 = ri2 * ri2 * ri2;
+                r1 = sqrt(rr);
+                if (isnan(r1)) continue;
 
-    } /* Endfor neighbor cells, c1 */
+                fcVal = 48.0 * ri2 * ri6 * (ri6 - 0.5) + Duc / r1;
+                vVal = 4.0 * ri6 * (ri6 - 1.0) - Uc - Duc * (r1 - RCUT);
 
-  } /* Endfor central cell, c */
+                lpe += vVal;
+                for (a = 0; a < 3; a++) {
+                    f = fcVal * dr[a];
+                    ra[i][a] += f;
+                    ra[j][a] -= f;
+                }
+            }
+        }
+    }
 
-  /* Global potential energy */
-  MPI_Allreduce(&lpe,&potEnergy,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+    /* Global potential energy */
+    MPI_Allreduce(&lpe, &potEnergy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+    free(particleIndices);
+    free(x);
+    free(y);
+    free(z);
 }
 
 /*--------------------------------------------------------------------*/
@@ -434,14 +530,14 @@ Evaluates physical properties: kinetic, potential & total energies.
 /*--------------------------------------------------------------------*/
 void atom_move() {
 /*----------------------------------------------------------------------
-Sends moved-out atoms to neighbor nodes and receives moved-in atoms 
-from neighbor nodes.  Called with n, r[0:n-1] & rv[0:n-1], atom_move 
+Sends moved-out atoms to neighbor nodes and receives moved-in atoms
+from neighbor nodes.  Called with n, r[0:n-1] & rv[0:n-1], atom_move
 returns a new n' together with r[0:n'-1] & rv[0:n'-1].
 ----------------------------------------------------------------------*/
 
 /* Local variables------------------------------------------------------
 
-mvque[6][NBMAX]: mvque[ku][0] is the # of to-be-moved atoms to neighbor 
+mvque[6][NBMAX]: mvque[ku][0] is the # of to-be-moved atoms to neighbor
   ku; MVQUE[ku][k>0] is the atom ID, used in r, of the k-th atom to be
   moved.
 ----------------------------------------------------------------------*/
@@ -462,8 +558,8 @@ mvque[6][NBMAX]: mvque[ku][0] is the # of to-be-moved atoms to neighbor
     /* Scan all the residents & immigrants to list moved-out atoms */
     for (i=0; i<n+newim; i++) {
       kul = 2*kd  ; /* Neighbor ID */
-      kuh = 2*kd+1; 
-      /* Register a to-be-copied atom in mvque[kul|kuh][] */      
+      kuh = 2*kd+1;
+      /* Register a to-be-copied atom in mvque[kul|kuh][] */
       if (r[i][0] > MOVED_OUT) { /* Don't scan moved-out atoms */
         /* Move to the lower direction */
         if (bmv(r[i],kul)) mvque[kul][++(mvque[kul][0])] = i;
@@ -482,7 +578,7 @@ mvque[6][NBMAX]: mvque[ku][0] is the # of to-be-moved atoms to neighbor
 
       inode = nn[ku=2*kd+kdd]; /* Neighbor node ID */
 
-      /* Send atom-number information---------------------------------*/  
+      /* Send atom-number information---------------------------------*/
 
       nsd = mvque[ku][0]; /* # of atoms to-be-sent */
 
@@ -509,7 +605,7 @@ mvque[6][NBMAX]: mvque[ku][0] is the # of to-be-moved atoms to neighbor
       for (i=1; i<=nsd; i++)
         for (a=0; a<3; a++) {
           /* Shift the coordinate origin */
-          dbuf[6*(i-1)  +a] = r [mvque[ku][i]][a]-sv[ku][a]; 
+          dbuf[6*(i-1)  +a] = r [mvque[ku][i]][a]-sv[ku][a];
           dbuf[6*(i-1)+3+a] = rv[mvque[ku][i]][a];
           r[mvque[ku][i]][0] = MOVED_OUT; /* Mark the moved-out atom */
         }
@@ -533,7 +629,7 @@ mvque[6][NBMAX]: mvque[ku][0] is the # of to-be-moved atoms to neighbor
       /* Message storing */
       for (i=0; i<nrc; i++)
         for (a=0; a<3; a++) {
-          r [n+newim+i][a] = dbufr[6*i  +a]; 
+          r [n+newim+i][a] = dbufr[6*i  +a];
           rv[n+newim+i][a] = dbufr[6*i+3+a];
         }
 
@@ -571,9 +667,9 @@ mvque[6][NBMAX]: mvque[ku][0] is the # of to-be-moved atoms to neighbor
 /*----------------------------------------------------------------------
 Bit condition functions:
 
-1. bbd(ri,ku) is .true. if coordinate ri[3] is in the boundary to 
+1. bbd(ri,ku) is .true. if coordinate ri[3] is in the boundary to
      neighbor ku.
-2. bmv(ri,ku) is .true. if an atom with coordinate ri[3] has moved out 
+2. bmv(ri,ku) is .true. if an atom with coordinate ri[3] has moved out
      to neighbor ku.
 ----------------------------------------------------------------------*/
 int bbd(double* ri, int ku) {
