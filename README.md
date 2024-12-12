@@ -120,5 +120,165 @@ $$
 
 After using the Morton Curve, the program's performance showed significant improvement. Specifically, the CPU time decreased by approximately **62.8%**, indicating a substantial increase in computational efficiency and a noticeable speedup of the program. Although COMT time increased by **3.25%**, this change is minimal compared to the reduction in CPU time and can be considered negligible. More importantly, the CATCH HIT RATE increased from **15.15%** to **47.87%**, significantly improving the cache hit rate and reducing memory access failures, further enhancing the program's execution efficiency. Overall, the use of the Morton Curve optimization led to notable improvements in both memory access efficiency and computational performance.
 
+## Applying Load Balancing
+
+**Overview**
+
+This part of report analyzes the implementation of dynamic load balancing functionality in MD.
+
+**Key Changes Overview:**
+
+- Added dynamic load balancing
+- Modified process initialization
+- Added new configuration parameters
+- Modified single_step() structure
+
+**Baseline**
+
+During the simulation, it was observed that significant load imbalances rarely occurred naturally. Please refer to the no imbalance output file under load balancing folder. There are hardly any imbalance at current level.
+
+      === Load Balance Check at Step 50 ===
+      Initial atom distribution:
+      Process 0: 18473 atoms
+      Process 1: 18402 atoms
+      Process 2: 18431 atoms
+      Process 3: 18470 atoms
+      Process 4: 18447 atoms
+      Process 5: 18384 atoms
+      Process 6: 18386 atoms
+      Process 7: 18463 atoms
+      Load imbalance metrics:
+      Max atoms: 18473, Min atoms: 18384
+      Current imbalance ratio: 1.004841
+      No load balancing needed at this step.
+   
+
+This can be attributed to several key physical and computational factors:
+   
+   - The molecular dynamics simulation employs a 1×1×2 spatial domain decomposition, where the simulation box is divided only along the z-direction between two processes. The initial configuration uses a face-centered cubic (FCC) lattice structure, which inherently provides a highly uniform distribution of atoms across the domain. This initial setup ensures that each process begins with approximately equal computational load.
+   
+   
+   - During the simulation, it was observed that significant load imbalances rarely occurred naturally. The initial configuration uses a structure, which inherently provides a highly uniform distribution of atoms across the domain. This initial setup ensures that each process begins with approximately equal computational load.
+   
+   1. Thermodynamic Equilibrium:
+      - The system maintains a uniform density due to thermodynamic equilibrium
+      - Random thermal motions of atoms tend to preserve the overall spatial distribution
+      - Forces between atoms naturally resist clustering or density fluctuations
+   
+   2. Periodic Boundary Conditions:
+      - The implementation of periodic boundary conditions prevents systematic drift
+      - When atoms exit one boundary, they enter from the opposite boundary
+      - This mechanism maintains a consistent number of atoms in each domain
+   
+   3. Inter-Process Atom Movement:
+      - Atoms moving across process boundaries are typically balanced by reciprocal movements
+      - The Lennard-Jones potential maintains relatively uniform density distributions
+      - Local density fluctuations tend to be temporary and self-correcting
+   
+
+**Load Balance Testing Requirements**
+
+Due to the inherent stability of the atom distribution, artificial imbalance scenarios had to be created to effectively test the load balancing mechanism. The natural dynamics of the system consistently maintained a near-optimal distribution of computational load across processes, with typical imbalance ratios staying well below the triggering threshold of 1.001.
+
+
+**Mannully Creating a imbalance senario.**
+
+1. Direct Manipulation of Initial Distribution:
+    if (sid == 1) {
+        // Process 1 keeps only 40% of its atoms
+        n = (int)(n * 0.4);
+        printf("Process 1: Reduced to %d atoms\n", n);
+    } else if (sid == 0) {
+        // Process 0 keeps its atoms plus copies some
+        for (j = 0; j < original_n * 0.6; j++) {  // Add 60% more
+            for (a = 0; a < 3; a++) {
+                r[n][a] = r[j][a];  // Copy positions from existing atoms
+            }
+            n++;
+        }
+        printf("Process 0: Increased to %d atoms\n", n);
+    }
+
+2. System Parameters:
+      Reduced the overall system size to make imbalances more noticeable
+      Modified the input file (pmdotoc.in) to use smaller InitUcell values
+      Adjusted load_imbalance_threshold to ensure the load balancing mechanism would trigger
+
+**Modified Single Step**
+We modified single step to handle load balancing in the correct order and without redundant operations. 
+
+**Load Balancing Function**
+
+Key Features of the Load Balancing:
+    
+    Periodic checks: Runs every load_balance_interval steps
+    Threshold-based: Only triggers if imbalance exceeds threshold
+    Boundary-aware: Transfers atoms near process boundaries
+    Limited transfers: Maximum 10 atoms per step to avoid instability is used in the output in the folder. Large values lead to instability and crash.
+    Neighbor-only: Transfers only between adjacent processes
+    Preserves physics: Maintains periodic boundary conditions during transfers
+     
+         === Load Balance Check at Step 100 ===
+         loading balancing triggered
+         Initial atom distribution:
+         Process 0: 11985 atoms
+         Process 1: 10705 atoms
+         Process 2: 27931 atoms
+         Process 3: 26793 atoms
+         load threshold is:1.050000
+         Load imbalance metrics:
+         Max atoms: 27931, Min atoms: 10705
+         Current imbalance ratio: 2.609155
+         
+         Final atom distribution:
+         Process 0: 11995 atoms
+         Process 1: 10705 atoms
+         Process 2: 27921 atoms
+         Process 3: 26793 atoms
+
+
+**Error - numerical overflow**
+
+Extremely large forces happen and indicate a serious issue with particle positions - likely atoms are far too close to each other, causing numerical overflow in the Lennard-Jones force calculation. We could add a minimum distance check and position validation as will be shown in the code. However, this is very computational expensive and not able to get results for serval results. For each atom, we must calculate forces with all nearby atoms. This involves checking atoms in 27 neighboring cells (3×3×3 region)
+Complexity is roughly O(N²) in the worst case for N atoms in neighboring cells.
+
+slurmstepd: error: *** JOB 28336171 ON a01-07 CANCELLED AT 2024-12-10T13:05:07 DUE TO TIME LIMIT ***
+
+
+Square root calculations
+Division operations
+Multiple floating-point multiplications
+Key Changes:
+
+
+    In compute_accel():
+        
+        Added minimum separation check (rMin2)
+        Added force capping (maxForce)
+        Improved cell index calculation with bounds checking
+        Added periodic boundary enforcement
+    
+
+    In half_kick():
+
+        Added velocity capping (vmax)
+        Added warning messages for capped velocities
+
+
+    In atom_move():
+
+        Added position and velocity validation
+        Added checks for NaN and infinity
+        Improved periodic boundary enforcement
+
+
+    In eval_props():
+
+        Added energy validation
+        Added error handling for unreasonable energy values
+        
+
+
+
 ## Acknowledgments
 This project is part of the CSCI596 course and focuses on enhancing the efficiency of molecular dynamics simulations through innovative computational methods.
